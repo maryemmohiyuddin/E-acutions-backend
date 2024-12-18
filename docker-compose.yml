@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  celery:
+    build:
+      context: .
+    command: celery -A bidding worker --loglevel=info -P solo
+    depends_on:
+      - redis
+      - db
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgress:smss1311313@db:5432/postgress  # Use db as the host
+
+  db:
+    image: postgres:15
+    container_name: bidding-database
+    restart: always
+    environment:
+      POSTGRES_USER: postgress
+      POSTGRES_PASSWORD: smss1311313  # Your DB password
+      POSTGRES_DB: postgress  # Your DB name
+    ports:
+      - "5432:5432"  # Exposing port for local access
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build:
+      context: .
+    command: gunicorn bidding.wsgi:application --bind 0.0.0.0:8000
+    depends_on:
+      - db
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgress:smss1311313@db:5432/postgress  # Ensure this matches your settings.py
+
+volumes:
+  redis_data:
+  postgres_data:
