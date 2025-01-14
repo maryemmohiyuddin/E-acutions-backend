@@ -1,19 +1,27 @@
 from rest_framework import serializers
 from .models import User
 from django.contrib.auth.hashers import make_password, check_password
-
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'name', 'email', 'password', 'role']
         extra_kwargs = {
-            'password': {'write_only': True}
+            'password': {'write_only': True}  # Ensure password is write-only
         }
 
     def create(self, validated_data):
         # Hash the password before saving
         validated_data['password'] = make_password(validated_data['password'])
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # Check if the password is being updated
+        password = validated_data.get('password', None)
+        if password:
+            # Hash the new password before saving
+            validated_data['password'] = make_password(password)
+
+        return super().update(instance, validated_data)
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
